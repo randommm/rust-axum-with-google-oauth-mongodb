@@ -1,22 +1,24 @@
 use super::{AppError, UserData};
 use axum::{
-    extract::{State, TypedHeader},
-    headers::Cookie,
+    body::Body,
+    extract::State,
     http::Request,
     middleware::Next,
     response::{IntoResponse, Redirect},
 };
+use axum_extra::TypedHeader;
 use chrono::Utc;
+use headers::Cookie;
 use mongodb::{
     bson::{doc, Document},
     Database,
 };
 
-pub async fn inject_user_data<T>(
+pub async fn inject_user_data(
     State(database): State<Database>,
     cookie: Option<TypedHeader<Cookie>>,
-    mut request: Request<T>,
-    next: Next<T>,
+    mut request: Request<Body>,
+    next: Next,
 ) -> Result<impl IntoResponse, AppError> {
     if let Some(cookie) = cookie {
         if let Some(session_token) = cookie.get("session_token") {
@@ -71,10 +73,7 @@ pub async fn inject_user_data<T>(
     Ok(next.run(request).await)
 }
 
-pub async fn check_auth<T>(
-    request: Request<T>,
-    next: Next<T>,
-) -> Result<impl IntoResponse, AppError> {
+pub async fn check_auth(request: Request<Body>, next: Next) -> Result<impl IntoResponse, AppError> {
     if request
         .extensions()
         .get::<Option<UserData>>()
